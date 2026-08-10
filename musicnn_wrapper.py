@@ -1,22 +1,18 @@
 """
-musicnn_wrapper.py  —  Music-specific tagger using musicnn
-Called from MATLAB via:
-    pyrunfile("musicnn_wrapper.py", ["top_label","top_score","all_scores","all_labels"],
-              audio_path=..., topn=...)
+musicnn_wrapper.py  —  Music-specific tagger using Essentia's MusiCNN model
+Replaces the original musicnn library (abandoned, numpy conflict).
 
-Dependencies (install once):
-    pip install musicnn
+Called from main.py via:
+    from musicnn_wrapper import classify
 
-Notes:
-  - musicnn requires a file path (not raw audio array), so MATLAB must first
-    write audio to a temp .wav file — see main.m for how this is handled.
-  - Two models are available:
-      "MTT_musicnn"  — trained on MagnaTagATune (music tags: genre, mood, instrument)
-      "MSD_musicnn"  — trained on Million Song Dataset (broader music taxonomy)
-  - Output scores are in [0, 1]; they are not a probability distribution
-    (multiple tags can score high simultaneously).
+Dependencies:
+    pip install essentia-tensorflow
 
-Outputs (returned to MATLAB):
+Models available:
+    "MSD_MusiCNN"   — Million Song Dataset (200 tags: genres, moods, instruments)
+    "MTT_MusiCNN"   — MagnaTagATune (50 tags: instruments, tempo, mood)
+
+Outputs:
     top_label   str         — highest-scoring tag
     top_score   float       — its score in [0, 1]
     all_scores  list[float] — scores for every tag
@@ -24,14 +20,12 @@ Outputs (returned to MATLAB):
 """
 
 import numpy as np
-from musicnn.tagger import top_tags
-from musicnn.extractor import extractor
 
-# ── Configuration ─────────────────────────────────────────────────────────
-MODEL   = "MTT_musicnn"   # swap to "MSD_musicnn" for Million Song Dataset tags
-TOP_N   = 10              # how many tags to return as "top"
+MODEL     = "MSD_MusiCNN"   # swap to "MTT_MusiCNN" for instrument/mood tags
+TARGET_SR = 16000
 
-# MagnaTagATune tag list (50 tags, same order as model output)
+# ── Tag vocabularies ───────────────────────────────────────────────────────
+
 MTT_TAGS = [
     "guitar", "classical", "slow", "techno", "strings", "drums", "electronic",
     "rock", "fast", "piano", "ambient", "beat", "violin", "vocal", "synth",
@@ -55,17 +49,17 @@ MSD_TAGS = [
     "sad", "house", "happy",
 ]
 
-TAG_MAP = {"MTT_musicnn": MTT_TAGS, "MSD_musicnn": MSD_TAGS}
+TAG_MAP = {"MSD_MusiCNN": MSD_TAGS, "MTT_MusiCNN": MTT_TAGS}
 
 
-# ── Main inference ─────────────────────────────────────────────────────────
-def classify(audio_path: str, model: str = MODEL, topn: int = TOP_N):
+# ── Inference ──────────────────────────────────────────────────────────────
+
+def classify(audio_path: str, model: str = MODEL):
     """
     Parameters
     ----------
-    audio_path : str   path to a .wav file (written by MATLAB)
-    model      : str   "MTT_musicnn" or "MSD_musicnn"
-    topn       : int   number of top tags to surface
+    audio_path : str   path to a .wav file
+    model      : str   "MSD_MusiCNN" or "MTT_MusiCNN"
 
     Returns
     -------
@@ -74,24 +68,24 @@ def classify(audio_path: str, model: str = MODEL, topn: int = TOP_N):
     all_scores : list[float]
     all_labels : list[str]
     """
-    labels = TAG_MAP.get(model, MTT_TAGS)
+    import essentia.standard as es
 
-    # extractor returns taggram (frames × tags) + stats dict
-    taggram, stats, _ = extractor(audio_path, model=model, extract_features=False)
+    labels = TAG_MAP.get(model, MSD_TAGS)
 
-    # Average across time frames → single score per tag
-    mean_scores = np.array(taggram).mean(axis=0)   # shape: (50,) for MTT
+    # Load audio at 16 kHz mono
+    loader    = es.MonoLoader(filename=audio_path, sampleRate=TARGET_SR)
+    audio     = loader()
 
-    top_idx   = int(np.argmax(mean_scores))
-    top_label = labels[top_idx]
-    top_score = float(mean_scores[top_idx])
+    # Run MusiCNN via Essentia's TensorflowPredictMusiCNN
+    predictor = es.TensorflowPredictMusiCNN(
+        graphFilename=es.tensorflow_predict_musicnn_model(model),
+        output="model/Sigmoid"
+    )
+    activations = predictor(audio)   # shape: (frames, n_tags)
+
+    mean_scores = np.array(activations).mean(axis=0)
+    top_idx     = int(np.argmax(mean_scores))
+    top_label   = labels[top_idx]
+    top_score   = float(mean_scores[top_idx])
 
     return top_label, top_score, mean_scores.tolist(), labels
-
-
-# ── Entry point ───────────────────────────────────────────────────────────
-# MATLAB passes `audio_path` (string) and optionally `topn` (int).
-_topn = int(topn) if "topn" in dir() else TOP_N          # noqa: F821
-top_label, top_score, all_scores, all_labels = classify(  # noqa: F821
-    str(audio_path), topn=_topn                           # noqa: F821
-)

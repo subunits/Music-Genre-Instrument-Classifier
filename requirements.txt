@@ -2,20 +2,20 @@
 # Install with: pip install -r requirements.txt
 
 # ── YAMNet backend ────────────────────────────────────────
-tensorflow>=2.12,<3.0
-tensorflow-hub>=0.14
+tensorflow>=2.16
+tensorflow-hub>=0.16
 resampy>=0.4.2
 
-# ── musicnn backend ───────────────────────────────────────
-musicnn>=0.1.0
+# ── Essentia backend (replaces musicnn) ───────────────────
+essentia-tensorflow
 
-# ── Audio I/O & processing (replaces MATLAB) ─────────────
+# ── Audio I/O & processing ────────────────────────────────
 librosa>=0.10
 soundfile>=0.12
-sounddevice>=0.4        # mic input only — safe to skip in Codespaces
+sounddevice>=0.4
 
 # ── Visualisation ─────────────────────────────────────────
 matplotlib>=3.7
 
 # ── Shared ────────────────────────────────────────────────
-numpy>=1.23,<2.0
+numpy>=1.26
