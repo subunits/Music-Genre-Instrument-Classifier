@@ -1,0 +1,13 @@
+# Music Genre / Instrument Classifier — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ── YAMNet backend ────────────────────────────────────────
+tensorflow>=2.12,<3.0
+tensorflow-hub>=0.14
+resampy>=0.4.2
+
+# ── musicnn backend ───────────────────────────────────────
+musicnn>=0.1.0
+
+# ── Shared ────────────────────────────────────────────────
+numpy>=1.23,<2.0

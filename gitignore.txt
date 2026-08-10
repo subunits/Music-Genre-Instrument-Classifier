@@ -1,0 +1,41 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# ── TensorFlow / TF Hub cache ─────────────────────────────
+/tmp/tfhub_modules/
+~/.cache/tfhub_modules/
+*.pb
+saved_model/
+
+# ── musicnn cache ─────────────────────────────────────────
+*.npy
+
+# ── Temp audio files written by MATLAB ───────────────────
+classifier_tmp.wav
+*.tmp.wav
+
+# ── MATLAB ────────────────────────────────────────────────
+*.asv
+*.m~
+slprj/
+*.mex*
+*.mexa64
+*.mexw64
+*.mexmaci64
+octave-workspace
+
+# ── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
