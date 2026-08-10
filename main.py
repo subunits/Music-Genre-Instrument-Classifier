@@ -1,0 +1,151 @@
+"""
+main.py  —  Music Genre / Instrument Classifier
+Pure-Python entry point for Codespaces (replaces main.m).
+
+Usage:
+    python main.py --source file   --model yamnet   --input track.mp3
+    python main.py --source file   --model musicnn  --input track.wav
+    python main.py --source mic    --model yamnet   --duration 5
+    python main.py --source mic    --model musicnn  --duration 5
+    python main.py                 # interactive prompts
+
+Dependencies:
+    pip install -r requirements.txt
+"""
+
+import argparse
+import os
+import sys
+import tempfile
+
+import numpy as np
+import soundfile as sf
+
+from helpers import preprocess_audio, extract_features, display_results
+
+
+# ── Audio acquisition ──────────────────────────────────────────────────────
+
+def load_from_file(path: str):
+    """Load audio from a file. Returns (audio, sr)."""
+    audio, sr = sf.read(path, always_2d=False)
+    return audio.astype(np.float32), sr
+
+
+def record_from_mic(duration: int = 5, sr: int = 16000):
+    """Record from the default microphone. Returns (audio, sr)."""
+    try:
+        import sounddevice as sd
+    except ImportError:
+        sys.exit("sounddevice not installed. Run: pip install sounddevice")
+
+    print(f"Recording {duration} seconds from microphone...")
+    audio = sd.rec(int(duration * sr), samplerate=sr,
+                   channels=1, dtype="float32")
+    sd.wait()
+    print("Recording complete.")
+    return audio.flatten(), sr
+
+
+# ── Classifier backends ────────────────────────────────────────────────────
+
+def run_yamnet(audio: np.ndarray):
+    """Run YAMNet on preprocessed 16 kHz mono audio."""
+    import yamnet_wrapper   # executed as a module via importlib trick below
+
+    # yamnet_wrapper.py was designed for pyrunfile; call its classify() directly
+    from yamnet_wrapper import classify
+    top_label, top_score, all_scores = classify(audio, sample_rate=16000)
+    return top_label, top_score, all_scores, None   # no named labels for YAMNet
+
+
+def run_musicnn(audio: np.ndarray):
+    """Run musicnn on preprocessed audio (writes a temp wav first)."""
+    from musicnn_wrapper import classify
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    try:
+        sf.write(tmp.name, audio, 16000)
+        top_label, top_score, all_scores, all_labels = classify(tmp.name)
+    finally:
+        os.unlink(tmp.name)
+
+    return top_label, top_score, all_scores, all_labels
+
+
+# ── Interactive prompts ────────────────────────────────────────────────────
+
+def prompt_source():
+    print("\nAudio source:")
+    print("  1. Load from file")
+    print("  2. Record from microphone")
+    choice = input("Choice [1/2]: ").strip()
+    return "file" if choice == "1" else "mic"
+
+
+def prompt_model():
+    print("\nClassifier:")
+    print("  1. YAMNet  (521 broad AudioSet classes)")
+    print("  2. musicnn (50 music-specific tags)")
+    choice = input("Choice [1/2]: ").strip()
+    return "yamnet" if choice == "1" else "musicnn"
+
+
+def prompt_file():
+    path = input("\nPath to audio file: ").strip()
+    if not os.path.isfile(path):
+        sys.exit(f"File not found: {path}")
+    return path
+
+
+# ── Main ───────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Music Genre / Instrument Classifier")
+    parser.add_argument("--source",   choices=["file", "mic"],
+                        help="Audio source")
+    parser.add_argument("--model",    choices=["yamnet", "musicnn"],
+                        help="Classifier backend")
+    parser.add_argument("--input",    help="Path to audio file (--source file)")
+    parser.add_argument("--duration", type=int, default=5,
+                        help="Recording duration in seconds (--source mic)")
+    args = parser.parse_args()
+
+    # -- Resolve source & model interactively if not provided --
+    source = args.source or prompt_source()
+    model  = args.model  or prompt_model()
+
+    # -- 1. Acquire audio --
+    if source == "file":
+        path = args.input or prompt_file()
+        audio, sr = load_from_file(path)
+        source_name = os.path.basename(path)
+    else:
+        audio, sr = record_from_mic(duration=args.duration)
+        source_name = "microphone"
+
+    # -- 2. Preprocess --
+    print("Preprocessing audio...")
+    audio = preprocess_audio(audio, sr)
+
+    # -- 3. Extract features --
+    mel_db, t_vec, f_vec = extract_features(audio)
+
+    # -- 4. Classify --
+    print(f"Running {model} classifier...")
+    if model == "yamnet":
+        top_label, top_score, all_scores, all_labels = run_yamnet(audio)
+    else:
+        top_label, top_score, all_scores, all_labels = run_musicnn(audio)
+
+    print(f"\nTop prediction: {top_label}  ({top_score*100:.1f}%)")
+
+    # -- 5. Display --
+    display_results(mel_db, t_vec, f_vec,
+                    top_label, top_score, all_scores, all_labels,
+                    source_name, model)
+
+
+if __name__ == "__main__":
+    main()
