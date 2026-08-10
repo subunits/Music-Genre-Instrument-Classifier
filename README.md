@@ -1,5 +1,5 @@
 # Music Genre / Instrument Classifier
-**Python pipeline — YAMNet & musicnn backends**
+**Python pipeline — YAMNet & Essentia MusiCNN backends**
 
 ---
 
@@ -11,7 +11,7 @@
 4. Run the classifier:
 
 ```bash
-python main.py --source file --model musicnn --input track.wav
+python main.py --source file --model musicnn --input track.mp3
 python main.py --source file --model yamnet  --input track.mp3
 ```
 
@@ -34,7 +34,7 @@ python main.py
 
 ```bash
 python main.py --source file --model yamnet  --input track.mp3
-python main.py --source file --model musicnn --input track.wav
+python main.py --source file --model musicnn --input track.mp3
 python main.py --source mic  --model yamnet  --duration 5
 python main.py --source mic  --model musicnn --duration 5
 python main.py                               # interactive prompts
@@ -49,7 +49,7 @@ python main.py                               # interactive prompts
 | `main.py` | Entry point — audio I/O, model selection, pipeline orchestration |
 | `helpers.py` | `preprocess_audio`, `extract_features`, `display_results` |
 | `yamnet_wrapper.py` | YAMNet backend — 521 broad AudioSet classes |
-| `musicnn_wrapper.py` | musicnn backend — 50 music-specific tags |
+| `essentia_wrapper.py` | Essentia MusiCNN backend — 50 music-specific tags |
 | `requirements.txt` | Python dependencies |
 | `.devcontainer/devcontainer.json` | Codespaces environment config |
 
@@ -57,18 +57,18 @@ python main.py                               # interactive prompts
 
 ## Model Comparison
 
-| | YAMNet | musicnn |
+| | YAMNet | Essentia MusiCNN |
 |---|---|---|
 | Classes | 521 (AudioSet) | 50 (MagnaTagATune or MSD) |
 | Best for | Broad sound detection | Music-specific tags |
 | Example tags | "Guitar music", "Drum kit" | "guitar", "rock", "female vocals" |
-| Framework | TensorFlow / TF Hub | PyTorch |
+| Framework | TensorFlow / TF Hub | TensorFlow / Essentia |
 | Speed | ~1–2 s | ~2–4 s |
 
-### musicnn tag sets
-Switch `MODEL` in `musicnn_wrapper.py` to change the tag vocabulary:
-- `"MTT_musicnn"` — MagnaTagATune (50 tags: instruments, tempo, mood)
-- `"MSD_musicnn"` — Million Song Dataset (50 tags: genres, eras, moods)
+### Essentia MusiCNN tag sets
+Switch `MODEL` in `essentia_wrapper.py` to change the tag vocabulary:
+- `"MTT_MusiCNN"` — MagnaTagATune (50 tags: instruments, tempo, mood)
+- `"MSD_MusiCNN"` — Million Song Dataset (50 tags: genres, eras, moods)
 
 ---
 
@@ -83,9 +83,9 @@ preprocess_audio()     mono → resample 16 kHz → normalize → trim silence
      ▼
 extract_features()     64-band Mel spectrogram (25 ms window, 10 ms hop)
      │
-     ├──[yamnet]──▶  yamnet_wrapper.py   (raw audio array)
+     ├──[yamnet]──▶  yamnet_wrapper.py    (raw audio array)
      │
-     └──[musicnn]─▶  musicnn_wrapper.py  (temp .wav file path)
+     └──[musicnn]─▶  essentia_wrapper.py  (temp .wav file path)
                            │
      ◀─────────────────────┘
      top_label, top_score, all_scores
@@ -101,5 +101,5 @@ display_results()      Mel spectrogram + top-10 bar chart → classifier_results
 ### Real-time classification
 Swap the single `load_from_file` call in `main.py` for a loop using `sounddevice.InputStream` to classify audio in continuous chunks.
 
-### Fine-tune musicnn on your own tags
-See the [musicnn training documentation](https://github.com/jordipons/musicnn-training).
+### Fine-tune MusiCNN on your own tags
+See the [Essentia models documentation](https://essentia.upf.edu/models.html).

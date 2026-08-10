@@ -1,6 +1,5 @@
 """
 main.py  —  Music Genre / Instrument Classifier
-Pure-Python entry point for Codespaces (replaces main.m).
 
 Usage:
     python main.py --source file   --model yamnet   --input track.mp3
@@ -19,6 +18,7 @@ import sys
 import tempfile
 
 import numpy as np
+import librosa
 import soundfile as sf
 
 from helpers import preprocess_audio, extract_features, display_results
@@ -27,8 +27,10 @@ from helpers import preprocess_audio, extract_features, display_results
 # ── Audio acquisition ──────────────────────────────────────────────────────
 
 def load_from_file(path: str):
-    """Load audio from a file. Returns (audio, sr)."""
-    audio, sr = sf.read(path, always_2d=False)
+    """Load audio from a file — supports mp3, wav, flac, ogg."""
+    audio, sr = librosa.load(path, sr=None, mono=False)
+    if audio.ndim > 1:
+        audio = audio.mean(axis=0)
     return audio.astype(np.float32), sr
 
 
@@ -50,18 +52,13 @@ def record_from_mic(duration: int = 5, sr: int = 16000):
 # ── Classifier backends ────────────────────────────────────────────────────
 
 def run_yamnet(audio: np.ndarray):
-    """Run YAMNet on preprocessed 16 kHz mono audio."""
-    import yamnet_wrapper   # executed as a module via importlib trick below
-
-    # yamnet_wrapper.py was designed for pyrunfile; call its classify() directly
     from yamnet_wrapper import classify
     top_label, top_score, all_scores = classify(audio, sample_rate=16000)
-    return top_label, top_score, all_scores, None   # no named labels for YAMNet
+    return top_label, top_score, all_scores, None
 
 
 def run_musicnn(audio: np.ndarray):
-    """Run musicnn on preprocessed audio (writes a temp wav first)."""
-    from musicnn_wrapper import classify
+    from essentia_wrapper import classify
 
     tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     try:
@@ -86,7 +83,7 @@ def prompt_source():
 def prompt_model():
     print("\nClassifier:")
     print("  1. YAMNet  (521 broad AudioSet classes)")
-    print("  2. musicnn (50 music-specific tags)")
+    print("  2. Essentia MusiCNN (50 music-specific tags)")
     choice = input("Choice [1/2]: ").strip()
     return "yamnet" if choice == "1" else "musicnn"
 
@@ -103,20 +100,16 @@ def prompt_file():
 def main():
     parser = argparse.ArgumentParser(
         description="Music Genre / Instrument Classifier")
-    parser.add_argument("--source",   choices=["file", "mic"],
-                        help="Audio source")
-    parser.add_argument("--model",    choices=["yamnet", "musicnn"],
-                        help="Classifier backend")
-    parser.add_argument("--input",    help="Path to audio file (--source file)")
+    parser.add_argument("--source",   choices=["file", "mic"])
+    parser.add_argument("--model",    choices=["yamnet", "musicnn"])
+    parser.add_argument("--input",    help="Path to audio file")
     parser.add_argument("--duration", type=int, default=5,
-                        help="Recording duration in seconds (--source mic)")
+                        help="Recording duration in seconds")
     args = parser.parse_args()
 
-    # -- Resolve source & model interactively if not provided --
     source = args.source or prompt_source()
     model  = args.model  or prompt_model()
 
-    # -- 1. Acquire audio --
     if source == "file":
         path = args.input or prompt_file()
         audio, sr = load_from_file(path)
@@ -125,14 +118,11 @@ def main():
         audio, sr = record_from_mic(duration=args.duration)
         source_name = "microphone"
 
-    # -- 2. Preprocess --
     print("Preprocessing audio...")
     audio = preprocess_audio(audio, sr)
 
-    # -- 3. Extract features --
     mel_db, t_vec, f_vec = extract_features(audio)
 
-    # -- 4. Classify --
     print(f"Running {model} classifier...")
     if model == "yamnet":
         top_label, top_score, all_scores, all_labels = run_yamnet(audio)
@@ -141,7 +131,6 @@ def main():
 
     print(f"\nTop prediction: {top_label}  ({top_score*100:.1f}%)")
 
-    # -- 5. Display --
     display_results(mel_db, t_vec, f_vec,
                     top_label, top_score, all_scores, all_labels,
                     source_name, model)
