@@ -1,5 +1,5 @@
 # Music Genre / Instrument Classifier
-**Python pipeline — Essentia MusiCNN backend (YAMNet pending)**
+**Python pipeline — YAMNet & Essentia MusiCNN backends**
 
 ---
 
@@ -16,7 +16,8 @@ pip install -r requirements.txt
 4. Run the classifier:
 
 ```bash
-python main.py --source file --model essentia --input LOOPsNine.mp3
+python main.py --source file --model essentia --input track.mp3
+python main.py --source file --model yamnet   --input track.mp3
 ```
 
 Results are saved to `classifier_results.png` in the repo root.
@@ -38,16 +39,11 @@ python main.py
 
 ```bash
 python main.py --source file --model essentia --input track.mp3
+python main.py --source file --model yamnet   --input track.mp3
 python main.py --source mic  --model essentia --duration 5
+python main.py --source mic  --model yamnet   --duration 5
 python main.py                                # interactive prompts
 ```
-
----
-
-## Known Issues
-
-### YAMNet — `ModuleNotFoundError: No module named 'pkg_resources'`
-`tensorflow-hub` currently fails on Python 3.12 in Codespaces due to a `pkg_resources` conflict. YAMNet is disabled until this is resolved. Use `--model essentia` in the meantime.
 
 ---
 
@@ -57,7 +53,7 @@ python main.py                                # interactive prompts
 |---|---|
 | `main.py` | Entry point — audio I/O, model selection, pipeline orchestration |
 | `helpers.py` | `preprocess_audio`, `extract_features`, `display_results` |
-| `yamnet_wrapper.py` | YAMNet backend — 521 broad AudioSet classes (currently unavailable) |
+| `yamnet_wrapper.py` | YAMNet backend — 521 broad AudioSet classes |
 | `essentia_wrapper.py` | Essentia MusiCNN backend — 50 music-specific tags |
 | `requirements.txt` | Python dependencies |
 | `.devcontainer/devcontainer.json` | Codespaces environment config |
@@ -72,8 +68,8 @@ python main.py                                # interactive prompts
 | Best for | Broad sound detection | Music-specific tags |
 | Example tags | "Guitar music", "Drum kit" | "guitar", "rock", "electronic" |
 | Framework | TensorFlow / TF Hub | TensorFlow / Essentia |
-| Flag | `--model yamnet` (unavailable) | `--model essentia` |
-| Status | ⚠️ Broken on Python 3.12 | ✅ Working |
+| Flag | `--model yamnet` | `--model essentia` |
+| Speed | ~1–2 s | ~2–4 s |
 
 ### Essentia MusiCNN tag sets
 Switch `MODEL` in `essentia_wrapper.py` to change the tag vocabulary:
@@ -93,7 +89,7 @@ preprocess_audio()     mono → resample 16 kHz → normalize → trim silence
      ▼
 extract_features()     64-band Mel spectrogram (25 ms window, 10 ms hop)
      │
-     ├──[--model yamnet]───▶  yamnet_wrapper.py   ⚠️ unavailable
+     ├──[--model yamnet]───▶  yamnet_wrapper.py   (raw audio array)
      │
      └──[--model essentia]─▶  essentia_wrapper.py (temp .wav file path)
                                     │
@@ -112,4 +108,4 @@ display_results()      Mel spectrogram + top-10 bar chart → classifier_results
 Swap the single `load_from_file` call in `main.py` for a loop using `sounddevice.InputStream` to classify audio in continuous chunks.
 
 ### Fine-tune on your own tags
-See the [Essentia models documentation](https://essentia.upf.edu/models.html).
+See the [Essentia models documentation](https://essentia.upf.edu/models.html) or the [YAMNet documentation](https://tfhub.dev/google/yamnet/1).
