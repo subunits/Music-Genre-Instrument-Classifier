@@ -12,7 +12,7 @@ import librosa.display
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-TARGET_SR = 16000   # Both YAMNet and musicnn expect 16 kHz
+TARGET_SR = 16000   # Both YAMNet and Essentia MusiCNN expect 16 kHz
 
 
 # ── 1. Preprocess ──────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ def display_results(mel_db, t_vec, f_vec,
     all_scores  : list[float]
     all_labels  : list[str] or None   (None for YAMNet → uses class indices)
     source_name : str
-    model_name  : str         "yamnet" or "musicnn"
+    model_name  : str         "yamnet" or "essentia"
     """
     TOP_N = min(10, len(all_scores))
     sorted_idx    = np.argsort(all_scores)[::-1][:TOP_N]
