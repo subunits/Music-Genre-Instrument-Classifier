@@ -3,7 +3,6 @@
 
 # ── YAMNet backend ────────────────────────────────────────
 tensorflow>=2.16
-tensorflow-hub>=0.16
 resampy>=0.4.2
 
 # ── Essentia backend (replaces musicnn) ───────────────────
