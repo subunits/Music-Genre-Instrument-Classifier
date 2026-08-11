@@ -2,11 +2,11 @@
 main.py  —  Music Genre / Instrument Classifier
 
 Usage:
-    python main.py --source file   --model yamnet   --input track.mp3
-    python main.py --source file   --model musicnn  --input track.wav
-    python main.py --source mic    --model yamnet   --duration 5
-    python main.py --source mic    --model musicnn  --duration 5
-    python main.py                 # interactive prompts
+    python main.py --source file  --model yamnet   --input track.mp3
+    python main.py --source file  --model essentia --input track.mp3
+    python main.py --source mic   --model yamnet   --duration 5
+    python main.py --source mic   --model essentia --duration 5
+    python main.py                # interactive prompts
 
 Dependencies:
     pip install -r requirements.txt
@@ -57,7 +57,7 @@ def run_yamnet(audio: np.ndarray):
     return top_label, top_score, all_scores, None
 
 
-def run_musicnn(audio: np.ndarray):
+def run_essentia(audio: np.ndarray):
     from essentia_wrapper import classify
 
     tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -82,10 +82,10 @@ def prompt_source():
 
 def prompt_model():
     print("\nClassifier:")
-    print("  1. YAMNet  (521 broad AudioSet classes)")
-    print("  2. Essentia MusiCNN (50 music-specific tags)")
+    print("  1. YAMNet   (521 broad AudioSet classes)")
+    print("  2. Essentia (50 music-specific tags)")
     choice = input("Choice [1/2]: ").strip()
-    return "yamnet" if choice == "1" else "musicnn"
+    return "yamnet" if choice == "1" else "essentia"
 
 
 def prompt_file():
@@ -101,7 +101,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Music Genre / Instrument Classifier")
     parser.add_argument("--source",   choices=["file", "mic"])
-    parser.add_argument("--model",    choices=["yamnet", "musicnn"])
+    parser.add_argument("--model",    choices=["yamnet", "essentia"])
     parser.add_argument("--input",    help="Path to audio file")
     parser.add_argument("--duration", type=int, default=5,
                         help="Recording duration in seconds")
@@ -127,7 +127,7 @@ def main():
     if model == "yamnet":
         top_label, top_score, all_scores, all_labels = run_yamnet(audio)
     else:
-        top_label, top_score, all_scores, all_labels = run_musicnn(audio)
+        top_label, top_score, all_scores, all_labels = run_essentia(audio)
 
     print(f"\nTop prediction: {top_label}  ({top_score*100:.1f}%)")
 

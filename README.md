@@ -11,8 +11,8 @@
 4. Run the classifier:
 
 ```bash
-python main.py --source file --model musicnn --input track.mp3
-python main.py --source file --model yamnet  --input track.mp3
+python main.py --source file --model yamnet   --input track.mp3
+python main.py --source file --model essentia --input track.mp3
 ```
 
 Results are saved to `classifier_results.png` in the repo root.
@@ -33,11 +33,11 @@ python main.py
 ## Usage
 
 ```bash
-python main.py --source file --model yamnet  --input track.mp3
-python main.py --source file --model musicnn --input track.mp3
-python main.py --source mic  --model yamnet  --duration 5
-python main.py --source mic  --model musicnn --duration 5
-python main.py                               # interactive prompts
+python main.py --source file --model yamnet   --input track.mp3
+python main.py --source file --model essentia --input track.mp3
+python main.py --source mic  --model yamnet   --duration 5
+python main.py --source mic  --model essentia --duration 5
+python main.py                                # interactive prompts
 ```
 
 ---
@@ -63,6 +63,7 @@ python main.py                               # interactive prompts
 | Best for | Broad sound detection | Music-specific tags |
 | Example tags | "Guitar music", "Drum kit" | "guitar", "rock", "female vocals" |
 | Framework | TensorFlow / TF Hub | TensorFlow / Essentia |
+| Flag | `--model yamnet` | `--model essentia` |
 | Speed | ~1–2 s | ~2–4 s |
 
 ### Essentia MusiCNN tag sets
@@ -83,11 +84,11 @@ preprocess_audio()     mono → resample 16 kHz → normalize → trim silence
      ▼
 extract_features()     64-band Mel spectrogram (25 ms window, 10 ms hop)
      │
-     ├──[yamnet]──▶  yamnet_wrapper.py    (raw audio array)
+     ├──[--model yamnet]───▶  yamnet_wrapper.py   (raw audio array)
      │
-     └──[musicnn]─▶  essentia_wrapper.py  (temp .wav file path)
-                           │
-     ◀─────────────────────┘
+     └──[--model essentia]─▶  essentia_wrapper.py (temp .wav file path)
+                                    │
+     ◀──────────────────────────────┘
      top_label, top_score, all_scores
      │
      ▼
@@ -101,5 +102,5 @@ display_results()      Mel spectrogram + top-10 bar chart → classifier_results
 ### Real-time classification
 Swap the single `load_from_file` call in `main.py` for a loop using `sounddevice.InputStream` to classify audio in continuous chunks.
 
-### Fine-tune MusiCNN on your own tags
+### Fine-tune on your own tags
 See the [Essentia models documentation](https://essentia.upf.edu/models.html).

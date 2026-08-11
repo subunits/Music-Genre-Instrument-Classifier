@@ -1,9 +1,18 @@
 """
 yamnet_wrapper.py  —  Python side of the Music Genre / Instrument Classifier
+Called from MATLAB via:
+    pyrunfile("yamnet_wrapper.py", ["top_label","top_score","all_scores"],
+              audio_data=..., sample_rate=...)
+
+Dependencies (install once):
+    pip install tensorflow tensorflow-hub numpy resampy
+
+Outputs (returned to MATLAB):
+    top_label   str    — highest-confidence class name
+    top_score   float  — confidence in [0, 1]
+    all_scores  list   — per-class mean scores across all frames
 """
 
-import csv
-import urllib.request
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -22,13 +31,14 @@ def _load_model():
     if _model is None:
         _model = hub.load(YAMNET_URL)
     if _labels is None:
+        import csv, urllib.request
         response = urllib.request.urlopen(YAMNET_LABELS)
         reader   = csv.DictReader(line.decode("utf-8") for line in response)
         _labels  = [row["display_name"] for row in reader]
     return _model, _labels
 
 
-# ── Optional: resample if passed a non-16k signal ──────────────────────────
+# ── Optional: resample if MATLAB passed a non-16k signal ──────────────────
 def _ensure_sample_rate(audio, orig_sr):
     if orig_sr == TARGET_SR:
         return audio
@@ -38,6 +48,7 @@ def _ensure_sample_rate(audio, orig_sr):
     except ImportError:
         raise RuntimeError(
             "resampy not installed. Run: pip install resampy\n"
+            "Or resample to 16 kHz in MATLAB before calling this script."
         )
 
 
@@ -71,7 +82,7 @@ def classify(audio_data, sample_rate: int):
     return top_label, top_score, mean_scores.tolist()
 
 
-# ── Entry point ───────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    if "audio_data" in globals() and "sample_rate" in globals():
-        top_label, top_score, all_scores = classify(audio_data, sample_rate)  # noqa: F821
+# ── Entry point when called via pyrunfile ─────────────────────────────────
+# MATLAB passes `audio_data` and `sample_rate` as workspace variables.
+# pyrunfile makes them available as globals here.
+top_label, top_score, all_scores = classify(audio_data, sample_rate)  # noqa: F821
